@@ -1,0 +1,24 @@
+extensions:
+  universal-editor/ui/1:
+    $include: src/universal-editor-ui-1/ext.config.yaml
+    runtimeManifest:
+      packages:
+        forms-personalization:
+          license: Apache-2.0
+          actions:
+            fetchSegments:
+              function: src/universal-editor-ui-1/actions/fetchSegments/index.js
+              web: 'yes'
+              runtime: nodejs:16
+              inputs:
+                LOG_LEVEL: debug
+              annotations:
+                final: true
+            saveSegments:
+              function: src/universal-editor-ui-1/actions/saveSegments/index.js
+              web: 'yes'
+              runtime: nodejs:16
+              inputs:
+                LOG_LEVEL: debug
+              annotations:
+                final: true
