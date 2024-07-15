@@ -14,6 +14,7 @@ async function main(params) {
   const formModel = await formJsonResponse.json();
   var segments = [];
   var placementFieldMappings = [];
+  returnSegments.offerCharacteristicMapping =[];
   if(formModel.properties) {
     const properties =formModel.properties;
     if(properties.segments) {
@@ -28,10 +29,14 @@ async function main(params) {
     if(properties.offerOptionSelected) {
       returnSegments.offerOptionSelected = properties.offerOptionSelected;
     }
-    if(properties.offerOptionSelected === "listed") {
+    if(properties.offerOptionSelected === "listed" && properties.offerActivityId) {
       returnSegments.offerActivityId = properties.offerActivityId;
-    } else if (properties.offerOptionSelected === "reqparam") {
+    } else if (properties.offerOptionSelected === "reqparam" && properties.offerReqParamName) {
       returnSegments.offerReqParamName = properties.offerReqParamName;
+    }
+
+    if(properties.offerCharacteristicMapping) {
+      returnSegments.offerCharacteristicMapping = JSON.parse(properties.offerCharacteristicMapping);
     }
   }
   
@@ -77,8 +82,25 @@ async function main(params) {
     }
   }
 
+  returnSegments.formFields = [];
+
+  const getFormFields = (model) => {
+      if(model.fieldType === "panel" || model.fieldType === "form") {
+        var items = model[":items"];
+        items && Object.keys(items).forEach(key=> {
+          getFormFields(items[key]);
+        });
+        return;
+      }
+    
+      if(model.name !== "__audience__") {
+        returnSegments.formFields.push({"id":model.id+","+model.name, "name": model.label?(model.label.value || model.name) :model.name});
+      }
+
+  }
+
   //Save enums
-  returnSegments.formFields = Object.keys(formModel[":items"]).filter((key) => formModel[":items"][key].fieldType !== "panel" &&  formModel[":items"][key].name !== "__audience__").map((item) =>({"id":formModel[":items"][item].id+","+formModel[":items"][item].name, "name": formModel[":items"][item].label?(formModel[":items"][item].label.value || formModel[":items"][item].name) :formModel[":items"][item].name}));
+  getFormFields(formModel);
 
   var audience = Object.keys(formModel[":items"]).filter((key) => formModel[":items"][key].name === "__audience__")[0];
   audience = formModel[":items"][audience];
@@ -122,6 +144,15 @@ async function main(params) {
       ));
   }
     returnSegments.decisions = decisions;
+
+    var offerCharacteristics = [];
+    const offerCharecteristicsResponse = await fetch("https://platform.adobe.io/data/core/dps/offers/xcore:personalized-offer:1927a3dbd6be4e86?offer-type=personalized", requestOptions);
+    if(offerCharecteristicsResponse.status === 200) {
+      const result = await offerCharecteristicsResponse.json();
+      const decisionsInResponse = result.characteristics;
+      offerCharacteristics = Object.keys(decisionsInResponse).map((key) => ({id: key, name: key}));
+    }
+      returnSegments.offerCharacteristics = offerCharacteristics;
   
   return {
     status: 200,

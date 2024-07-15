@@ -1,6 +1,6 @@
 import { attach } from "@adobe/uix-guest";
 import { extensionId } from "./Constants";
-import { Provider, ActionButton, TextField, View, Header, Text, ComboBox, Item, RadioGroup, Radio} from "@adobe/react-spectrum";
+import { Provider, ActionButton, TextField, View, Header, Text, ComboBox, Item, RadioGroup, Radio, ListView} from "@adobe/react-spectrum";
 import  Add from '@spectrum-icons/workflow/Add';
 import  Remove from '@spectrum-icons/workflow/Remove';
 import  SaveFloppy from '@spectrum-icons/workflow/SaveFloppy';
@@ -20,9 +20,11 @@ function RailContent () {
     const [aepToken, setAEPToken] = useState(null);
     const [formFields, setFormFields] = useState([]);
     const [offerOptionSelected, setOfferOptionSelected] = useState();
-    const [offerActivityId, setOfferActivityId] = useState();
+    const [offerActivityId, setOfferActivityId] = useState(new Set([2]));
     const [offers, setOffers] = useState([]);
     const [offerReqParamName, setOfferReqParamName] = useState();
+    const [offerCharacteristics, setOfferCharacteristics] = useState([]);
+    const [offerCharacteristicMapping, setOfferCharacteristicMapping] = useState([]);
 
     const [fields, setFields] = useState([]);
 
@@ -105,6 +107,37 @@ function RailContent () {
         }*/
     };
 
+    const handleOfferCharacteristicChange = async (index, side, value) => {
+        const newOfferCharacteristicMapping = [...offerCharacteristicMapping];
+        console.error("printing new placement field mappings");
+        console.error(newOfferCharacteristicMapping);
+        if(side === 'field') {
+            var fieldMapping = newOfferCharacteristicMapping[index];
+            console.error(fieldMapping);
+            fieldMapping.fieldId = value.split(",")[0];
+            fieldMapping.fieldName = value.split(",")[1];
+            console.error(fieldMapping);
+            newOfferCharacteristicMapping[index] = fieldMapping;
+            //console.error("printing new placement field mappings once more");
+            //console.error(newPlacementFieldMappings);
+            //newPlacementFieldMappings[index][fieldName] = value;
+        }
+        if(side === 'id') {
+            var fieldMapping = newOfferCharacteristicMapping[index];
+            console.error(fieldMapping);
+            fieldMapping.offerAttributeId = value;
+            console.error(fieldMapping);
+            newOfferCharacteristicMapping[index] = fieldMapping;
+            //console.error("printing new placement field mappings once more");
+            //console.error(newPlacementFieldMappings);
+            //newPlacementFieldMappings[index][fieldName] = value;
+        }
+        setOfferCharacteristicMapping(newOfferCharacteristicMapping);
+        /*if(newFields[index].name && newFields[index].expr) {
+            saveSegments(newFields);
+        }*/
+    };
+
     const handleOfferOptionChange = (value) => {
         setOfferOptionSelected(value);
     };
@@ -164,12 +197,13 @@ function RailContent () {
                 "nativeSegments": newFields,
                 "rtcdpSegments": rtcdp,
                 "placementFieldMappings": placementFieldMappings,
-                "offerOptionSelected": offerOptionSelected
+                "offerOptionSelected": offerOptionSelected,
+                "offerCharacteristicMapping": offerCharacteristicMapping
             };
 
             
             if(offerOptionSelected === "listed") {
-                params.offerActivityId = offerActivityId;
+                //params.offerActivityId = offerActivityId;
             } else if (offerOptionSelected === "reqparam") {
                 params.offerReqParamName = offerReqParamName;
             }
@@ -238,6 +272,13 @@ function RailContent () {
                     setOfferOptionSelected(actionResponse.offerOptionSelected);
                     setOfferActivityId(actionResponse.offerActivityId);
                     setOfferReqParamName(actionResponse.offerReqParamName);
+                    setOfferCharacteristics(actionResponse.offerCharacteristics);
+                    setOfferCharacteristicMapping(actionResponse.offerCharacteristicMapping);
+                    if(actionResponse.offerCharacteristicMapping.length == 0) {
+                        actionResponse.offerCharacteristics.forEach((item) => {
+                            setOfferCharacteristicMapping([...offerCharacteristicMapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                        });
+                    }
                 }
                 
             } finally {
@@ -299,6 +340,19 @@ function RailContent () {
                 setOfferOptionSelected(actionResponse.offerOptionSelected);
                 setOfferActivityId(actionResponse.offerActivityId);
                 setOfferReqParamName(actionResponse.offerReqParamName);
+                setOfferCharacteristics(actionResponse.offerCharacteristics);
+                //setOfferCharacteristicMapping(actionResponse.offerCharacteristicMapping);
+                var ocmapping = [];
+                if(actionResponse.offerCharacteristicMapping.length == 0) {
+                    actionResponse.offerCharacteristics.forEach((item) => {
+                        ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                    });
+                } else {
+                    ocmapping = actionResponse.offerCharacteristicMapping;
+                }
+                console.error("oc mapping")
+                console.error(ocmapping);
+                setOfferCharacteristicMapping(ocmapping);
 
                 
             } finally {
@@ -314,7 +368,7 @@ function RailContent () {
         return (
             <Provider theme={lightTheme} colorScheme="light">
                 <View padding="size-250">
-                    <Text>Trying to fetch segments using saved token...</Text>
+                    <Text>Trying to fetch RT-CDP audiences using saved token...</Text>
                 </View>
             </Provider>
         )
@@ -324,7 +378,7 @@ function RailContent () {
         return (
             <Provider theme={lightTheme} colorScheme="light">
                 <View padding="size-250">
-                    <Text>Trying to fetch segments using the token entered...</Text>
+                    <Text>Trying to fetch RT-CDP audiences using the token entered...</Text>
                 </View>
             </Provider>
         )
@@ -352,7 +406,7 @@ function RailContent () {
     return (
         <Provider theme={lightTheme} colorScheme="light">
             <View padding="size-250">
-                <Header>Segments</Header>
+                <Header>Audiences</Header>
                 <View marginTop="size-200">
                     {fields.map((field, index) => (
                         <View
@@ -407,13 +461,14 @@ function RailContent () {
                     <Radio value="reqparam">Use Request Parameter</Radio>
                 </RadioGroup>
                 {offerOptionSelected === 'listed' && (
-                    <ComboBox
-                        selectedKey={offerActivityId}
-                        defaultItems={offers}
+                    <ListView
+                        defaultSelectedKeys={offerActivityId}
+                        selectionMode="multiple"
+                        items={offers}
                         onSelectionChange={(value) => handleOfferChange(value)}
                         label={`Select offer`}>
                         {(item) => <Item key={item.id}>{item.name}</Item>}
-                    </ComboBox>
+                    </ListView>
                 )}
                 {offerOptionSelected === 'reqparam' && (
                     <TextField
@@ -422,6 +477,39 @@ function RailContent () {
                         label={`Request Parameter Name`}
                     />
                 )}
+                </View>
+                <View marginTop="size-200">
+                    { offerCharacteristicMapping.map((offerCharacteristic, index) => (
+                        <View
+                        key={index}
+                        padding="size-200"
+                        backgroundColor="gray-100"
+                        borderRadius="medium"
+                        marginBottom="size-200"
+                        UNSAFE_style={{ border: '1px solid lightgray' }}
+                      >      
+                      <View>                 
+                            <ComboBox
+                                selectedKey={offerCharacteristic.offerAttributeId}
+                                defaultItems={offerCharacteristics}
+                                onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'id', value)}
+                                label={`Offer Attribute`}>
+                                {(item) => <Item key={item.id}>{item.name}</Item>}
+                            </ComboBox>
+                            
+                            </View>
+                            <View>
+                            <ComboBox
+                                selectedKey={offerCharacteristic.fieldId+","+offerCharacteristic.fieldName}
+                                defaultItems={formFields}
+                                onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'field', value)}
+                                label={`Field`}>
+                                {(item) => <Item key={item.id}>{item.name}</Item>}
+                            </ComboBox>
+                            </View>
+                        </View >                
+                    ))}
+                    
                 </View>
                 <View marginTop="size-200">
                     {placementFieldMappings.map((placementFieldMapping, index) => (

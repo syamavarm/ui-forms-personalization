@@ -5,9 +5,10 @@ async function main(params) {
   var formData = new FormData();
   formData.append("segments", JSON.stringify(params.nativeSegments));
   formData.append("placementFieldMappings", JSON.stringify(params.placementFieldMappings));
+  formData.append("offerCharacteristicMapping", JSON.stringify(params.offerCharacteristicMapping));
   formData.append("offerOptionSelected", params.offerOptionSelected)
   if(params.offerOptionSelected === "listed") {
-    formData.append("offerActivityId", params.offerActivityId);
+    //formData.append("offerActivityId", params.offerActivityId);
   } else if (params.offerOptionSelected === "reqparam") {
     formData.append("offerReqParamName", params.offerReqParamName)
   }
