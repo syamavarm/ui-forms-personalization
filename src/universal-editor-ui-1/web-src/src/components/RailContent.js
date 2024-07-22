@@ -1,17 +1,19 @@
 import { attach } from "@adobe/uix-guest";
 import { extensionId } from "./Constants";
-import { Provider, ActionButton, TextField, View, Header, Text, ComboBox, Item, RadioGroup, Radio, ListView} from "@adobe/react-spectrum";
+import { Provider, ActionButton, TextField, View, ProgressCircle, Text, ComboBox, Item, RadioGroup, Radio, ListView} from "@adobe/react-spectrum";
+import { Accordion, AccordionItem } from '@spectrum-web-components/accordion';
 import  Add from '@spectrum-icons/workflow/Add';
 import  Remove from '@spectrum-icons/workflow/Remove';
 import  SaveFloppy from '@spectrum-icons/workflow/SaveFloppy';
 import  Refresh from '@spectrum-icons/workflow/Refresh';
 import { lightTheme } from "@adobe/react-spectrum";
-import {useState, useEffect } from 'react';
+import {useState, useEffect, useRef } from 'react';
 import allActions from '../config.json'
 import actionWebInvoke from '../utils'
 
 function RailContent () {
     const [loading, setLoading] = useState(true);
+    const [waiting, setWaiting] = useState(false);
     const [toConnect, setToConnect] = useState(false);
     const [rtcdp, setRtcdp] = useState([]);
     const [placementFieldMappings, setPlacementFieldMappings] = useState([]);
@@ -25,8 +27,10 @@ function RailContent () {
     const [offerReqParamName, setOfferReqParamName] = useState();
     const [offerCharacteristics, setOfferCharacteristics] = useState([]);
     const [offerCharacteristicMapping, setOfferCharacteristicMapping] = useState([]);
+    const detailsRef = useRef(null);
 
     const [fields, setFields] = useState([]);
+    const [aepConfigs, setAEPConfigs] = useState([{id: 'AEPConfig', name: 'AEPConfig'}]);
 
     useEffect(() => {
         (async () => {
@@ -118,9 +122,6 @@ function RailContent () {
             fieldMapping.fieldName = value.split(",")[1];
             console.error(fieldMapping);
             newOfferCharacteristicMapping[index] = fieldMapping;
-            //console.error("printing new placement field mappings once more");
-            //console.error(newPlacementFieldMappings);
-            //newPlacementFieldMappings[index][fieldName] = value;
         }
         if(side === 'id') {
             var fieldMapping = newOfferCharacteristicMapping[index];
@@ -128,14 +129,8 @@ function RailContent () {
             fieldMapping.offerAttributeId = value;
             console.error(fieldMapping);
             newOfferCharacteristicMapping[index] = fieldMapping;
-            //console.error("printing new placement field mappings once more");
-            //console.error(newPlacementFieldMappings);
-            //newPlacementFieldMappings[index][fieldName] = value;
         }
         setOfferCharacteristicMapping(newOfferCharacteristicMapping);
-        /*if(newFields[index].name && newFields[index].expr) {
-            saveSegments(newFields);
-        }*/
     };
 
     const handleOfferOptionChange = (value) => {
@@ -220,6 +215,7 @@ function RailContent () {
     }
 
     const handleConnect = async () => {
+        setWaiting(true);
         setLoading(true);
         const editorState = await guestConnection.host.editorState.get();
             const { connections, selected, editables, location, customTokens } = editorState;
@@ -260,6 +256,7 @@ function RailContent () {
                 if(actionResponse.error) {
                     setLoading(true);
                     setToConnect(true);
+                    setWaiting(false);
                 } else {
                     setFields(actionResponse.nativeSegments);
                     setRtcdp(actionResponse.rtcdpSegments);
@@ -269,17 +266,28 @@ function RailContent () {
                     setOffers(actionResponse.decisions);
                     setLoading(false);
                     setToConnect(false);
+                    setWaiting(false);
+                    detailsRef.current.removeAttribute('open');
                     setOfferOptionSelected(actionResponse.offerOptionSelected);
                     setOfferActivityId(actionResponse.offerActivityId);
                     setOfferReqParamName(actionResponse.offerReqParamName);
                     setOfferCharacteristics(actionResponse.offerCharacteristics);
-                    setOfferCharacteristicMapping(actionResponse.offerCharacteristicMapping);
+                    var ocmapping = [];
                     if(actionResponse.offerCharacteristicMapping.length == 0) {
                         actionResponse.offerCharacteristics.forEach((item) => {
-                            setOfferCharacteristicMapping([...offerCharacteristicMapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                            if(item.id === "discount") {
+                                ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                            }
                         });
+                    } else {
+                        ocmapping = actionResponse.offerCharacteristicMapping;
                     }
+                    console.error("oc mapping")
+                    console.error(ocmapping);
+                    setOfferCharacteristicMapping(ocmapping);
+                    
                 }
+            
                 
             } finally {
                 //setLoading(false);
@@ -287,7 +295,7 @@ function RailContent () {
     }
 
 
-    useEffect(() => {
+   /* useEffect(() => {
         if(!guestConnection) {
             return;
         }
@@ -345,7 +353,9 @@ function RailContent () {
                 var ocmapping = [];
                 if(actionResponse.offerCharacteristicMapping.length == 0) {
                     actionResponse.offerCharacteristics.forEach((item) => {
-                        ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                        if(item.id === "discount") {
+                            ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
+                        }
                     });
                 } else {
                     ocmapping = actionResponse.offerCharacteristicMapping;
@@ -362,9 +372,9 @@ function RailContent () {
         if (loading) {
             fetchData().catch((e) => console.log("Extension error:", e));
         }
-    } , [guestConnection]);
+    } , [guestConnection]);*/
 
-    if (loading && !toConnect) {
+    /*if (loading && !toConnect) {
         return (
             <Provider theme={lightTheme} colorScheme="light">
                 <View padding="size-250">
@@ -382,7 +392,7 @@ function RailContent () {
                 </View>
             </Provider>
         )
-    }
+    }*/
 
     if(toConnect) {
         return (
@@ -405,159 +415,234 @@ function RailContent () {
     
     return (
         <Provider theme={lightTheme} colorScheme="light">
-            <View padding="size-250">
-                <Header>Audiences</Header>
-                <View marginTop="size-200">
-                    {fields.map((field, index) => (
-                        <View
-                        key={index}
-                        padding="size-200"
-                        backgroundColor="gray-100"
-                        borderRadius="medium"
-                        marginBottom="size-200"
-                        UNSAFE_style={{ border: '1px solid lightgray' }}
-                      >      
-                      <View>                  
-                            <TextField
-                                value={field.name}
-                                onChange={(value) => handleChange(index, 'name', value)}
-                                label={`Name`}
-                            />
-                            </View>
-                            <View>
-                            <TextField
-                                value={field.expr}
-                                onChange={(value) => handleChange(index, 'expr', value)}
-                                label={`Expression`}
-                            />
-                            </View>
-                            <View marginTop="size-200">
-                            <ActionButton
-                                onPress={() => handleRemoveField(index)}
-                                aria-label={`Remove Text Fields ${index + 1}`}
-                            >
-                                <Remove />
-                            </ActionButton>     
-                            </View>
-                        </View >                
-                    ))}
-                </View>
-                <ActionButton onPress={handleAddField}>
-                    <Add/>
-                </ActionButton>
-                <ActionButton onPress={handleSegmentSave}>
-                    <SaveFloppy/>
-                </ActionButton>
-            </View>
 
             <View padding="size-250">
-                <Header>Offers and Placements</Header>
-                <View marginTop="size-200">
-                    <RadioGroup
-                    value={offerOptionSelected}
-                    onChange={handleOfferOptionChange}
-                    >
-                    <Radio value="listed">Choose from offer list</Radio>
-                    <Radio value="reqparam">Use Request Parameter</Radio>
-                </RadioGroup>
-                {offerOptionSelected === 'listed' && (
-                    <ListView
-                        defaultSelectedKeys={offerActivityId}
-                        selectionMode="multiple"
-                        items={offers}
-                        onSelectionChange={(value) => handleOfferChange(value)}
-                        label={`Select offer`}>
-                        {(item) => <Item key={item.id}>{item.name}</Item>}
-                    </ListView>
-                )}
-                {offerOptionSelected === 'reqparam' && (
-                    <TextField
-                        value={offerReqParamName}
-                        onChange={(value) => handleReqParamChange(value)}
-                        label={`Request Parameter Name`}
-                    />
-                )}
-                </View>
-                <View marginTop="size-200">
-                    { offerCharacteristicMapping.map((offerCharacteristic, index) => (
+                <details ref={detailsRef} open>
+                    <summary>AEP Connection Details</summary>
+                    <View marginTop="size-200">
                         <View
-                        key={index}
-                        padding="size-200"
-                        backgroundColor="gray-100"
-                        borderRadius="medium"
-                        marginBottom="size-200"
-                        UNSAFE_style={{ border: '1px solid lightgray' }}
-                      >      
-                      <View>                 
+                            padding="size-200"
+                            backgroundColor="gray-100"
+                            borderRadius="medium"
+                            marginBottom="size-200"
+                            UNSAFE_style={{ border: '1px solid lightgray' }}
+                        >      
+                        <View>                  
                             <ComboBox
-                                selectedKey={offerCharacteristic.offerAttributeId}
-                                defaultItems={offerCharacteristics}
-                                onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'id', value)}
-                                label={`Offer Attribute`}>
+                                selectedKey={`AEPConfig`}
+                                defaultItems={aepConfigs}
+                                //onSelectionChange={(value) => handlePlacementChange(index, 'id', value)}
+                                label={`Select Cloud Configuration`}>
                                 {(item) => <Item key={item.id}>{item.name}</Item>}
                             </ComboBox>
-                            
-                            </View>
-                            <View>
-                            <ComboBox
-                                selectedKey={offerCharacteristic.fieldId+","+offerCharacteristic.fieldName}
-                                defaultItems={formFields}
-                                onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'field', value)}
-                                label={`Field`}>
-                                {(item) => <Item key={item.id}>{item.name}</Item>}
-                            </ComboBox>
-                            </View>
-                        </View >                
-                    ))}
-                    
-                </View>
-                <View marginTop="size-200">
-                    {placementFieldMappings.map((placementFieldMapping, index) => (
-                        <View
-                        key={index}
-                        padding="size-200"
-                        backgroundColor="gray-100"
-                        borderRadius="medium"
-                        marginBottom="size-200"
-                        UNSAFE_style={{ border: '1px solid lightgray' }}
-                      >      
-                      <View>                 
-                            <ComboBox
-                                selectedKey={placementFieldMapping.placementId}
-                                defaultItems={placements}
-                                onSelectionChange={(value) => handlePlacementChange(index, 'id', value)}
-                                label={`Placement`}>
-                                {(item) => <Item key={item.id}>{item.name}</Item>}
-                            </ComboBox>
-                            
-                            </View>
-                            <View>
-                            <ComboBox
-                                selectedKey={placementFieldMapping.fieldId+","+placementFieldMapping.fieldName}
-                                defaultItems={formFields}
-                                onSelectionChange={(value) => handlePlacementChange(index, 'field', value)}
-                                label={`Field`}>
-                                {(item) => <Item key={item.id}>{item.name}</Item>}
-                            </ComboBox>
-                            </View>
-                            <View marginTop="size-200">
-                            <ActionButton
-                                onPress={() => handleRemovePlacement(index)}
-                                aria-label={`Remove Text Fields ${index + 1}`}
-                            >
-                                <Remove />
-                            </ActionButton>     
-                            </View>
-                        </View >                
-                    ))}
-                </View>
-                <ActionButton onPress={handleAddPlacement}>
-                    <Add/>
-                </ActionButton>
-                <ActionButton onPress={handlePlacementSave}>
-                    <SaveFloppy/>
-                </ActionButton>
+                                </View>
+                                <View>
+                                <TextField
+                                    value={`7044a5f4-2a52-4264-9323-3b6511444188`}
+                                    required
+                                    //onChange={(value) => handleChange(index, 'expr', value)}
+                                    label={`Datastream ID`}
+                                />
+                                </View>
+                                <View marginTop="size-200">
+                                <ActionButton
+                                    onPress={() => handleConnect()}
+                                >
+                                    Connect
+                                </ActionButton>     
+                                </View>
+                            </View >                
+                    </View>
+                </details>
             </View>
+
+            {waiting &&
+            <View padding="size-250">
+                <Text>Fetching audiences & offers..</Text>
+                <View>
+                <ProgressCircle
+                    aria-label="Loading"
+                    isIndeterminate
+                    size="M"
+                />
+                </View>
+            </View>
+            }
+
+            {!loading &&
+            <View padding="size-250">
+                <details>
+                    <summary>Native Audiences</summary>
+                    <View marginTop="size-200">
+                        {fields.map((field, index) => (
+                            <View
+                            key={index}
+                            padding="size-200"
+                            backgroundColor="gray-100"
+                            borderRadius="medium"
+                            marginBottom="size-200"
+                            UNSAFE_style={{ border: '1px solid lightgray' }}
+                        >      
+                        <View>                  
+                                <TextField
+                                    value={field.name}
+                                    onChange={(value) => handleChange(index, 'name', value)}
+                                    label={`Name`}
+                                />
+                                </View>
+                                <View>
+                                <TextField
+                                    value={field.expr}
+                                    onChange={(value) => handleChange(index, 'expr', value)}
+                                    label={`Expression`}
+                                />
+                                </View>
+                                <View marginTop="size-200">
+                                <ActionButton
+                                    onPress={() => handleRemoveField(index)}
+                                    aria-label={`Remove Text Fields ${index + 1}`}
+                                >
+                                    <Remove />
+                                </ActionButton>     
+                                </View>
+                            </View >                
+                        ))}
+                    </View>
+                    <ActionButton onPress={handleAddField}>
+                        <Add/>
+                    </ActionButton>
+                    <ActionButton onPress={handleSegmentSave}>
+                        <SaveFloppy/>
+                    </ActionButton>
+                </details>
+            </View>
+            }
+            
+            { !loading &&
+            <View padding="size-250">
+                <details open>
+                    <summary>Offers and Placements</summary>
+                    <View marginTop="size-200" paddingStart="size-200">
+                    <View marginTop="size-200">
+                        <details>
+                            <summary>Select Offers</summary>
+                        <RadioGroup
+                            value={offerOptionSelected}
+                            onChange={handleOfferOptionChange}
+                            >
+                            <Radio value="listed">Choose from offer list</Radio>
+                            <Radio value="reqparam">Use Request Parameter</Radio>
+                        </RadioGroup>
+                        {offerOptionSelected === 'listed' && (
+                            <ListView
+                                defaultSelectedKeys={offerActivityId}
+                                selectionMode="multiple"
+                                items={offers}
+                                onSelectionChange={(value) => handleOfferChange(value)}
+                                label={`Select offer`}>
+                                {(item) => <Item key={item.id}>{item.name}</Item>}
+                            </ListView>
+                        )}
+                        {offerOptionSelected === 'reqparam' && (
+                            <TextField
+                                value={offerReqParamName}
+                                onChange={(value) => handleReqParamChange(value)}
+                                label={`Request Parameter Name`}
+                            />
+                        )}
+                        </details>
+                    </View>
+                    <View marginTop="size-200">
+                        <details>
+                            <summary>Map Offer Attributes</summary>
+                            { offerCharacteristicMapping.map((offerCharacteristic, index) => (
+                                <View
+                                key={index}
+                                padding="size-200"
+                                backgroundColor="gray-100"
+                                borderRadius="medium"
+                                marginBottom="size-200"
+                                UNSAFE_style={{ border: '1px solid lightgray' }}
+                            >      
+                            <View>                 
+                                    <ComboBox
+                                        selectedKey={offerCharacteristic.offerAttributeId}
+                                        defaultItems={offerCharacteristics}
+                                        onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'id', value)}
+                                        label={`Offer Attribute`}>
+                                        {(item) => <Item key={item.id}>{item.name}</Item>}
+                                    </ComboBox>
+                                    
+                                    </View>
+                                    <View>
+                                    <ComboBox
+                                        selectedKey={offerCharacteristic.fieldId+","+offerCharacteristic.fieldName}
+                                        defaultItems={formFields}
+                                        onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'field', value)}
+                                        label={`Field`}>
+                                        {(item) => <Item key={item.id}>{item.name}</Item>}
+                                    </ComboBox>
+                                    </View>
+                                </View >                
+                            ))}
+                        </details>
+                    </View>
+                    <View marginTop="size-200">
+                        <details>
+                            <summary>Map Placements</summary>
+                        {placementFieldMappings.map((placementFieldMapping, index) => (
+                            <View
+                            key={index}
+                            padding="size-200"
+                            backgroundColor="gray-100"
+                            borderRadius="medium"
+                            marginBottom="size-200"
+                            UNSAFE_style={{ border: '1px solid lightgray' }}
+                        >      
+                        <View>                 
+                                <ComboBox
+                                    selectedKey={placementFieldMapping.placementId}
+                                    defaultItems={placements}
+                                    onSelectionChange={(value) => handlePlacementChange(index, 'id', value)}
+                                    label={`Placement`}>
+                                    {(item) => <Item key={item.id}>{item.name}</Item>}
+                                </ComboBox>
+                                
+                                </View>
+                                <View>
+                                <ComboBox
+                                    selectedKey={placementFieldMapping.fieldId+","+placementFieldMapping.fieldName}
+                                    defaultItems={formFields}
+                                    onSelectionChange={(value) => handlePlacementChange(index, 'field', value)}
+                                    label={`Field`}>
+                                    {(item) => <Item key={item.id}>{item.name}</Item>}
+                                </ComboBox>
+                                </View>
+                                <View marginTop="size-200">
+                                <ActionButton
+                                    onPress={() => handleRemovePlacement(index)}
+                                    aria-label={`Remove Text Fields ${index + 1}`}
+                                >
+                                    <Remove />
+                                </ActionButton>     
+                                </View>
+                            </View >                
+                        ))}
+                        <ActionButton onPress={handleAddPlacement}>
+                            <Add/>
+                        </ActionButton>
+                        </details>
+                    </View>
+                    <View marginTop="size-200" marginBottom="size-200">
+                        <ActionButton onPress={handlePlacementSave}>
+                            <SaveFloppy/>
+                        </ActionButton>
+                    </View>
+                    </View>
+                </details>
+            </View>
+            }
+            
         
         </Provider>
     );
