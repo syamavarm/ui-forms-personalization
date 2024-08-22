@@ -1,17 +1,31 @@
 import { attach } from "@adobe/uix-guest";
 import { extensionId } from "./Constants";
 import { Provider, ActionButton, TextField, View, ProgressCircle, Text, ComboBox, Item, RadioGroup, Radio, ListView} from "@adobe/react-spectrum";
-import { Accordion, AccordionItem } from '@spectrum-web-components/accordion';
 import  Add from '@spectrum-icons/workflow/Add';
 import  Remove from '@spectrum-icons/workflow/Remove';
 import  SaveFloppy from '@spectrum-icons/workflow/SaveFloppy';
 import  Refresh from '@spectrum-icons/workflow/Refresh';
 import { lightTheme } from "@adobe/react-spectrum";
 import {useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
+import DataTree from "./DataTree";
+
 import allActions from '../config.json'
 import actionWebInvoke from '../utils'
 
 function RailContent () {
+    const { railId } = useParams();
+    if (!railId) {
+        console.error('Rail id parameter is missed');
+        return;
+    }
+    console.error(railId);
+    if(railId == 1) {
+        return (
+            <DataTree/>
+        );
+    } else {
+
     const [loading, setLoading] = useState(true);
     const [waiting, setWaiting] = useState(false);
     const [toConnect, setToConnect] = useState(false);
@@ -646,7 +660,7 @@ function RailContent () {
         
         </Provider>
     );
-    
+        }
 };
 
 export default RailContent;

@@ -14,6 +14,14 @@ extensions:
                 LOG_LEVEL: debug
               annotations:
                 final: true
+            fetchFDMTree:
+              function: src/universal-editor-ui-1/actions/fetchFDMTree/index.js
+              web: 'yes'
+              runtime: nodejs:16
+              inputs:
+                LOG_LEVEL: debug
+              annotations:
+                final: true
             saveSegments:
               function: src/universal-editor-ui-1/actions/saveSegments/index.js
               web: 'yes'

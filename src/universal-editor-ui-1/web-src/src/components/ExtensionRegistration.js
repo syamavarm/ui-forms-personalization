@@ -18,11 +18,18 @@ function ExtensionRegistration() {
                         addRails() {
                             return [
                                 {
+                                    id: "forms.datatree.panel",
+                                    header: "Data Tree",
+                                    url: '/#/rail/1',
+                                    icon: 'FileData',
+                                },
+                                {
                                     id: "forms.personalization.panel",
                                     header: "Personalization",
-                                    url: '/#/rail/1',
+                                    url: '/#/rail/2',
                                     icon: 'Offer',
                                 }
+                                
                             ];
                         },
                     },
