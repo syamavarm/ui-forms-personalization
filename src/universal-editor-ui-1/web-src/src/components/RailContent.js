@@ -1,6 +1,6 @@
 import { attach } from "@adobe/uix-guest";
 import { extensionId } from "./Constants";
-import { Provider, ActionButton, TextField, View, ProgressCircle, Text, ComboBox, Item, RadioGroup, Radio, ListView} from "@adobe/react-spectrum";
+import { Provider, ActionButton, TextField, View, ProgressCircle, Text, ComboBox, Item, RadioGroup, Radio, CheckboxGroup, Checkbox} from "@adobe/react-spectrum";
 import  Add from '@spectrum-icons/workflow/Add';
 import  Remove from '@spectrum-icons/workflow/Remove';
 import  SaveFloppy from '@spectrum-icons/workflow/SaveFloppy';
@@ -28,23 +28,22 @@ function RailContent () {
 
     const [loading, setLoading] = useState(true);
     const [waiting, setWaiting] = useState(false);
-    const [toConnect, setToConnect] = useState(false);
+    const [toConnect, setToConnect] = useState(true);
     const [rtcdp, setRtcdp] = useState([]);
     const [placementFieldMappings, setPlacementFieldMappings] = useState([]);
     const [placements, setPlacements] = useState([]);
     const [guestConnection, setGuestConnection] = useState();
-    const [aepToken, setAEPToken] = useState(null);
     const [formFields, setFormFields] = useState([]);
-    const [offerOptionSelected, setOfferOptionSelected] = useState();
+    const [offerOptionSelected, setOfferOptionSelected] = useState([]);
     const [offerActivityId, setOfferActivityId] = useState(new Set([2]));
     const [offers, setOffers] = useState([]);
     const [offerReqParamName, setOfferReqParamName] = useState();
     const [offerCharacteristics, setOfferCharacteristics] = useState([]);
     const [offerCharacteristicMapping, setOfferCharacteristicMapping] = useState([]);
     const detailsRef = useRef(null);
-
+    const [selected, setSelected] = React.useState([]);
     const [fields, setFields] = useState([]);
-    const [aepConfigs, setAEPConfigs] = useState([{id: 'AEPConfig', name: 'AEPConfig'}]);
+    const [aepConfig, setAEPConfig] = useState({});
 
     useEffect(() => {
         (async () => {
@@ -65,6 +64,12 @@ function RailContent () {
         console.error("In add placements after" + placementFieldMappings);
     };
 
+    const handleAddOfferCharacteristic = () => {
+        console.error("In add offer characteristics" + offerCharacteristicMapping);
+        setOfferCharacteristicMapping([...offerCharacteristicMapping, { placementId: '', fieldId: '' , fieldName:''}]);
+        console.error("In add offer characteristics after" + offerCharacteristicMapping);
+    };
+
     const handleRemoveField = async (index) => {
         console.error("In remove fields before" + fields);
         const newFields = fields.filter((_, i) => i !== index);
@@ -72,7 +77,6 @@ function RailContent () {
         console.error(newFields);
         setFields(newFields);
         console.error("in remove fields after" + fields);
-        //saveSegments(newFields);
     };
 
     const handleRemovePlacement = async (index) => {
@@ -85,6 +89,16 @@ function RailContent () {
         //saveSegments(newFields);
     };
 
+    const handleRemoveOfferCharacteristic = async (index) => {
+        console.error("In remove offer characteristic mapping before" + offerCharacteristicMapping);
+        const newOfferCharacteristicMapping = offerCharacteristicMapping.filter((_, i) => i !== index);
+        console.error("printing new offer characteristic mapping");
+        console.error(newOfferCharacteristicMapping);
+        setOfferCharacteristicMapping(newOfferCharacteristicMapping);
+        console.error("in remove offer characteristic mapping after" + offerCharacteristicMapping);
+        //saveSegments(newFields);
+    };
+
     const handleChange = async (index, side, value) => {
         const newFields = [...fields];
         newFields[index][side] = value;
@@ -93,6 +107,12 @@ function RailContent () {
             saveSegments(newFields);
         }*/
     };
+
+    const handleAEPConfig = (key, value) => {
+        var newAEPConfig = {...aepConfig};
+        newAEPConfig[key] = value;
+        setAEPConfig(newAEPConfig);
+    }
 
     const handlePlacementChange = async (index, side, value) => {
         const newPlacementFieldMappings = [...placementFieldMappings];
@@ -147,16 +167,8 @@ function RailContent () {
         setOfferCharacteristicMapping(newOfferCharacteristicMapping);
     };
 
-    const handleOfferOptionChange = (value) => {
-        setOfferOptionSelected(value);
-    };
-
     const handleOfferChange = (value) => {
-        setOfferActivityId(value);
-    };
-
-    const handleReqParamChange = (value) => {
-        setOfferReqParamName(value);
+        setOfferOptionSelected(value);
     };
 
 
@@ -167,11 +179,6 @@ function RailContent () {
     const handlePlacementSave = async () => {
         saveSegmentsAndPlacements(fields,rtcdp, placementFieldMappings);
     };
-
-
-    const handleTokenChange = (value) => {
-        setAEPToken(value);
-    }
 
     const saveSegmentsAndPlacements = async (newFields, rtcdp, placementFieldMappings) => {
         
@@ -210,13 +217,7 @@ function RailContent () {
                 "offerCharacteristicMapping": offerCharacteristicMapping
             };
 
-            
-            if(offerOptionSelected === "listed") {
-                //params.offerActivityId = offerActivityId;
-            } else if (offerOptionSelected === "reqparam") {
-                params.offerReqParamName = offerReqParamName;
-            }
-
+        
             console.error(params);
             const actionResponse = await actionWebInvoke(allActions['saveSegments'], headers, params);
             if(actionResponse === 'OK') {
@@ -229,9 +230,10 @@ function RailContent () {
     }
 
     const handleConnect = async () => {
-        setWaiting(true);
-        setLoading(true);
-        const editorState = await guestConnection.host.editorState.get();
+        if(aepConfig.clientId && aepConfig.clientSecret && aepConfig.scopes) {
+            setWaiting(true);
+            setLoading(true);
+            const editorState = await guestConnection.host.editorState.get();
             const { connections, selected, editables, location, customTokens } = editorState;
             try {
 
@@ -261,7 +263,7 @@ function RailContent () {
                     "endpoint": connections[tempEndpointName].replace("xwalk:", ""),
                     "token": token,
                     "formPath": form[0].resource.replace("urn:aemconnection:", ""),
-                    "aepToken": aepToken
+                    "aepConfig": aepConfig
                 };
         
                 console.error(params);
@@ -282,23 +284,11 @@ function RailContent () {
                     setToConnect(false);
                     setWaiting(false);
                     detailsRef.current.removeAttribute('open');
-                    setOfferOptionSelected(actionResponse.offerOptionSelected);
+                    setOfferOptionSelected(JSON.parse(actionResponse.offerOptionSelected));
                     setOfferActivityId(actionResponse.offerActivityId);
                     setOfferReqParamName(actionResponse.offerReqParamName);
                     setOfferCharacteristics(actionResponse.offerCharacteristics);
-                    var ocmapping = [];
-                    if(actionResponse.offerCharacteristicMapping.length == 0) {
-                        actionResponse.offerCharacteristics.forEach((item) => {
-                            if(item.id === "discount") {
-                                ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
-                            }
-                        });
-                    } else {
-                        ocmapping = actionResponse.offerCharacteristicMapping;
-                    }
-                    console.error("oc mapping")
-                    console.error(ocmapping);
-                    setOfferCharacteristicMapping(ocmapping);
+                    setOfferCharacteristicMapping(actionResponse.offerCharacteristicMapping);
                     
                 }
             
@@ -306,10 +296,11 @@ function RailContent () {
             } finally {
                 //setLoading(false);
             }
+        }
     }
 
 
-   /* useEffect(() => {
+    useEffect(() => {
         if(!guestConnection) {
             return;
         }
@@ -347,46 +338,23 @@ function RailContent () {
                 };
         
                 console.error(params);
-                const actionResponse = await actionWebInvoke(allActions['fetchSegments'], headers, params);
+                const actionResponse = await actionWebInvoke(allActions['fetchAEPConfig'], headers, params);
                 console.error(actionResponse);
                 if(actionResponse.error) {
-                    setLoading(false);
                     setToConnect(true);
                 }
-                setFields(actionResponse.nativeSegments);
-                setRtcdp(actionResponse.rtcdpSegments);
-                setPlacementFieldMappings(actionResponse.placementFieldMappings);
-                setPlacements(actionResponse.placements);
-                setFormFields(actionResponse.formFields);
-                setOffers(actionResponse.decisions);
-                setOfferOptionSelected(actionResponse.offerOptionSelected);
-                setOfferActivityId(actionResponse.offerActivityId);
-                setOfferReqParamName(actionResponse.offerReqParamName);
-                setOfferCharacteristics(actionResponse.offerCharacteristics);
-                //setOfferCharacteristicMapping(actionResponse.offerCharacteristicMapping);
-                var ocmapping = [];
-                if(actionResponse.offerCharacteristicMapping.length == 0) {
-                    actionResponse.offerCharacteristics.forEach((item) => {
-                        if(item.id === "discount") {
-                            ocmapping = ([...ocmapping, { offerAttributeId: '', fieldId: '' , fieldName:''}]);
-                        }
-                    });
-                } else {
-                    ocmapping = actionResponse.offerCharacteristicMapping;
-                }
-                console.error("oc mapping")
-                console.error(ocmapping);
-                setOfferCharacteristicMapping(ocmapping);
+                setAEPConfig(actionResponse);
+                setToConnect(false);
 
                 
             } finally {
-                setLoading(false);
+            
             }
         };
         if (loading) {
             fetchData().catch((e) => console.log("Extension error:", e));
         }
-    } , [guestConnection]);*/
+    } , [guestConnection]);
 
     /*if (loading && !toConnect) {
         return (
@@ -411,20 +379,11 @@ function RailContent () {
     if(toConnect) {
         return (
             <Provider theme={lightTheme} colorScheme="light">
-                <View padding="size-250">                 
-                    <TextField
-                        label={`Token`}
-                        onChange={(value) => handleTokenChange(value)}
-                    />
-
-                      <View>
-                        <ActionButton onPress={handleConnect}>
-                            <Refresh/>
-                        </ActionButton>
-                    </View>          
-                </View >  
+                <View padding="size-250">
+                    <Text>Fetching AEP Config...</Text>
+                </View>
             </Provider>
-        );
+        )
     }
     
     return (
@@ -441,31 +400,53 @@ function RailContent () {
                             marginBottom="size-200"
                             UNSAFE_style={{ border: '1px solid lightgray' }}
                         >      
-                        <View>                  
-                            <ComboBox
-                                selectedKey={`AEPConfig`}
-                                defaultItems={aepConfigs}
-                                //onSelectionChange={(value) => handlePlacementChange(index, 'id', value)}
-                                label={`Select Cloud Configuration`}>
-                                {(item) => <Item key={item.id}>{item.name}</Item>}
-                            </ComboBox>
-                                </View>
-                                <View>
-                                <TextField
-                                    value={`7044a5f4-2a52-4264-9323-3b6511444188`}
-                                    required
-                                    //onChange={(value) => handleChange(index, 'expr', value)}
-                                    label={`Datastream ID`}
-                                />
-                                </View>
-                                <View marginTop="size-200">
-                                <ActionButton
-                                    onPress={() => handleConnect()}
-                                >
-                                    Connect
-                                </ActionButton>     
-                                </View>
-                            </View >                
+
+                        <View>
+                            <TextField
+                                required
+                                defaultValue={aepConfig.clientId?aepConfig.clientId:""}
+                                onChange={(value) => handleAEPConfig("clientId", value)}
+                                label={`Client ID`}
+                            />
+                            <TextField
+                                required
+                                defaultValue={aepConfig.clientSecret?aepConfig.clientSecret:""}
+                                onChange={(value) => handleAEPConfig("clientSecret", value)}
+                                label={`Client Secret`}
+                            />
+                            <TextField
+                                required
+                                defaultValue={aepConfig.scopes?aepConfig.scopes:""}
+                                onChange={(value) => handleAEPConfig("scopes", value)}
+                                label={`Scopes`}
+                            />
+                            <TextField
+                                required
+                                defaultValue={aepConfig.orgId?aepConfig.orgId:""}
+                                onChange={(value) => handleAEPConfig("orgId", value)}
+                                label={`Org ID`}
+                            />
+                            <TextField
+                                required
+                                defaultValue={aepConfig.sandboxName?aepConfig.sandboxName:""}
+                                onChange={(value) => handleAEPConfig("sandboxName", value)}
+                                label={`Sandbox Name`}
+                            />
+                            <TextField
+                                required
+                                defaultValue={aepConfig.dataStreamId?aepConfig.dataStreamId:""}
+                                onChange={(value) => handleAEPConfig("dataStreamId", value)}
+                                label={`Datastream ID`}
+                            />
+                            </View>
+                            <View marginTop="size-200">
+                            <ActionButton
+                                onPress={() => handleConnect()}
+                            >
+                                Connect
+                            </ActionButton>     
+                            </View>
+                        </View >                
                     </View>
                 </details>
             </View>
@@ -540,65 +521,68 @@ function RailContent () {
                     <View marginTop="size-200">
                         <details>
                             <summary>Select Offers</summary>
-                        <RadioGroup
-                            value={offerOptionSelected}
-                            onChange={handleOfferOptionChange}
-                            >
-                            <Radio value="listed">Choose from offer list</Radio>
-                            <Radio value="reqparam">Use Request Parameter</Radio>
-                        </RadioGroup>
-                        {offerOptionSelected === 'listed' && (
-                            <ListView
-                                defaultSelectedKeys={offerActivityId}
-                                selectionMode="multiple"
-                                items={offers}
-                                onSelectionChange={(value) => handleOfferChange(value)}
-                                label={`Select offer`}>
-                                {(item) => <Item key={item.id}>{item.name}</Item>}
-                            </ListView>
-                        )}
-                        {offerOptionSelected === 'reqparam' && (
-                            <TextField
-                                value={offerReqParamName}
-                                onChange={(value) => handleReqParamChange(value)}
-                                label={`Request Parameter Name`}
-                            />
-                        )}
+                        
+                            <View marginTop="size-200" paddingStart="size-200">
+                                <CheckboxGroup
+                                    value={offerOptionSelected}
+                                    onChange={handleOfferChange}
+                                >
+                                {offers.map(item => (
+                                    <Checkbox key={item.id} value={item.id}>
+                                        {item.name}
+                                    </Checkbox>
+                                ))}
+                            </CheckboxGroup>
+                          </View>
+                        
+                        
                         </details>
                     </View>
+                    
                     <View marginTop="size-200">
                         <details>
                             <summary>Map Offer Attributes</summary>
-                            { offerCharacteristicMapping.map((offerCharacteristic, index) => (
-                                <View
-                                key={index}
-                                padding="size-200"
-                                backgroundColor="gray-100"
-                                borderRadius="medium"
-                                marginBottom="size-200"
-                                UNSAFE_style={{ border: '1px solid lightgray' }}
-                            >      
-                            <View>                 
-                                    <ComboBox
-                                        selectedKey={offerCharacteristic.offerAttributeId}
-                                        defaultItems={offerCharacteristics}
-                                        onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'id', value)}
-                                        label={`Offer Attribute`}>
-                                        {(item) => <Item key={item.id}>{item.name}</Item>}
-                                    </ComboBox>
-                                    
-                                    </View>
-                                    <View>
-                                    <ComboBox
-                                        selectedKey={offerCharacteristic.fieldId+","+offerCharacteristic.fieldName}
-                                        defaultItems={formFields}
-                                        onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'field', value)}
-                                        label={`Field`}>
-                                        {(item) => <Item key={item.id}>{item.name}</Item>}
-                                    </ComboBox>
-                                    </View>
-                                </View >                
-                            ))}
+                        {offerCharacteristicMapping.map((offerCharacteristic, index) => (
+                            <View
+                            key={index}
+                            padding="size-200"
+                            backgroundColor="gray-100"
+                            borderRadius="medium"
+                            marginBottom="size-200"
+                            UNSAFE_style={{ border: '1px solid lightgray' }}
+                        >      
+                        <View>                 
+                                <ComboBox
+                                    selectedKey={offerCharacteristic.offerAttributeId}
+                                    defaultItems={offerCharacteristics}
+                                    onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'id', value)}
+                                    label={`Offer Attribute`}>
+                                    {(item) => <Item key={item.id}>{item.name}</Item>}
+                                </ComboBox>
+                                
+                                </View>
+                                <View>
+                                <ComboBox
+                                    selectedKey={offerCharacteristic.fieldId+","+offerCharacteristic.fieldName}
+                                    defaultItems={formFields}
+                                    onSelectionChange={(value) => handleOfferCharacteristicChange(index, 'field', value)}
+                                    label={`Field`}>
+                                    {(item) => <Item key={item.id}>{item.name}</Item>}
+                                </ComboBox>
+                                </View>
+                                <View marginTop="size-200">
+                                <ActionButton
+                                    onPress={() => handleRemoveOfferCharacteristic(index)}
+                                    aria-label={`Remove Text Fields ${index + 1}`}
+                                >
+                                    <Remove />
+                                </ActionButton>     
+                                </View>
+                            </View >                
+                        ))}
+                        <ActionButton onPress={handleAddOfferCharacteristic}>
+                            <Add/>
+                        </ActionButton>
                         </details>
                     </View>
                     <View marginTop="size-200">
